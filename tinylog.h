@@ -119,6 +119,5 @@ private:
 	FILE *_logfile = nullptr;
 };
 
-
 #endif /* __TINYLOG__ */
 // END OF FILE: tinylog.h

@@ -1,0 +1,8 @@
+/logs/
+*.gch
+*.o
+
+# unit test
+test
+te
+tq
