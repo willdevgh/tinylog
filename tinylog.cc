@@ -28,7 +28,7 @@ tstring tinylog::getdate(const TCHAR *sep /*= _T("")*/)
     TCHAR date_buff[32];
     memset(date_buff, 0x00, sizeof date_buff);
 
-	_stprintf(date_buff, _T("%04d%s%02d%s%02d"), 
+	_sntprintf(date_buff, sizeof(date_buff), _T("%04d%s%02d%s%02d"), 
 		pt->tm_year + 1900, separator.c_str(), pt->tm_mon + 1, separator.c_str(), pt->tm_mday);
 	
     return date_buff;
@@ -48,7 +48,7 @@ tstring tinylog::gettime(const TCHAR *sep /*= _T("")*/)
     TCHAR time_buff[32];
     memset(time_buff, 0x00, sizeof time_buff);
 
-	_stprintf(time_buff, _T("%02d%s%02d%s%02d"), 
+	_sntprintf(time_buff, sizeof(time_buff), _T("%02d%s%02d%s%02d"), 
 		pt->tm_hour, separator.c_str(), pt->tm_min, separator.c_str(), pt->tm_sec);
 	
 	return time_buff; 
@@ -79,7 +79,7 @@ tstring tinylog::getdatetime(const TCHAR *dsep /*= _T("")*/, const TCHAR *tsep /
 
     memset(datetime_buff, 0x00, sizeof datetime_buff);
 
-	_stprintf(datetime_buff, _T("%04d%s%02d%s%02d%s%02d%s%02d%s%02d"), 
+	_sntprintf(datetime_buff, sizeof(datetime_buff), _T("%04d%s%02d%s%02d%s%02d%s%02d%s%02d"), 
 		pt->tm_year + 1900, dseparator.c_str(), pt->tm_mon + 1, dseparator.c_str(), pt->tm_mday,
 		dtsep,
 		pt->tm_hour, tseparator.c_str(), pt->tm_min, tseparator.c_str(), pt->tm_sec);
@@ -95,7 +95,7 @@ tstring tinylog::makeindex(int idx)
 	TCHAR idx_buff[8];
 	memset(idx_buff, 0x00, sizeof idx_buff);
 	
-	_stprintf(idx_buff, _T("%04d"), idx);
+	_sntprintf(idx_buff, sizeof(idx_buff),_T("%04d"), idx);
 
 	return idx_buff;
 }
@@ -119,7 +119,7 @@ tstring tinylog::getindex()
     while((pde = readdir(pd)) != nullptr)
     {
 		memset(filename, 0x00, sizeof filename);
-		_stprintf(filename, _T("%s/%s"), _path.c_str(), pde->d_name);
+		_sntprintf(filename, sizeof(filename), _T("%s/%s"), _path.c_str(), pde->d_name);
 		temp_name = pde->d_name;
 		stat(filename, &filestat);
 		
@@ -150,7 +150,7 @@ tstring tinylog::makefullpathname(const TCHAR *date, const TCHAR *idx)
 {
 	TCHAR fullpathname[TL_FILENAME_MAX];
 	memset(fullpathname, 0x00, sizeof fullpathname);
-	_stprintf(fullpathname, _T("%s/%s_%s_%s%s"),
+	_sntprintf(fullpathname, sizeof(fullpathname), _T("%s/%s_%s_%s%s"),
 		_path.c_str(), _base_name.c_str(), date, idx, _ext.c_str());
 	
 	return fullpathname;
@@ -201,6 +201,7 @@ int tinylog::open(FILE **ppf)
 		if ((*ppf = _tfopen(new_filename.c_str(), _T("a"))) == nullptr)
 			return LOGERR_OPEN;
 		
+		_curr_file = new_filename;
 		return LOGERR_OK;
 	}
 	// 2.
@@ -212,6 +213,7 @@ int tinylog::open(FILE **ppf)
 		if ((*ppf = _tfopen(filename.c_str(), _T("a"))) == nullptr)
 			return LOGERR_OPEN;
 		
+		_curr_file = filename;
 		return LOGERR_OK;	
 	}
 	else
@@ -221,7 +223,8 @@ int tinylog::open(FILE **ppf)
 		new_filename = makefullpathname(getdate().c_str(), new_index.c_str());
 		if ((*ppf = _tfopen(new_filename.c_str(), _T("a"))) == nullptr)
 			return LOGERR_OPEN;
-		
+
+		_curr_file = new_filename;		
 		return LOGERR_OK;
 	}
 
@@ -258,24 +261,40 @@ int tinylog::writeline(const TCHAR *file, int line, LOGLV lv, const TCHAR *fmt, 
 
 		TCHAR linebuff[MAXLINESIZE*2];
 		memset(linebuff, 0x00, sizeof linebuff);
-		_stprintf(linebuff, _T("%s[%s][%s][%d]: %s\n"), 
+		_sntprintf(linebuff, sizeof(linebuff), _T("%s[%s][%s][%d]: %s\n"), 
 			curr_time.c_str(), log_level.c_str(), file, line, formatbuff);
 		
 		_log_handler->put(linebuff);
 	}
-	
-	int err = LOGERR_OK;
-	if (ftell(_logfile) > _log_size_max * 1024)
+
+	// buggy code
+	//if (ftell(_logfile) > _log_size_max * 1024)
+	if (getlogsize(_curr_file.c_str()) > _log_size_max)
 	{
-		_log_handler->wait4processover();
-		
-		err = close(_logfile);
-		if (err != LOGERR_OK)
-			return err;
-		
-		err = open(&_logfile);
-		if (err != LOGERR_OK)
-			return err;
+		//_log_handler->forcewait(true);
+		// one thread switch file and others just put in queue.
+		if (_mut.try_lock())
+		{
+			//_log_handler->wait4processover();
+			_log_handler->forcewait(true);
+
+			int err = LOGERR_OK;
+			err = close(_logfile);
+			if (err != LOGERR_OK)
+				return err;
+	
+			err = open(&_logfile);
+			if (err != LOGERR_OK)
+				return err;
+			
+			_mut.unlock();
+			_log_handler->forcewait(false);
+			_log_handler->notify();
+		}
+	}
+	else
+	{
+		_log_handler->notify();
 	}
 
 	return LOGERR_OK;
@@ -345,6 +364,7 @@ int tinylog::finish()
 	_log_handler->threadexit();
 	// step2. close file.
 	int res = close(_logfile);
+	_logfile = nullptr;
 	// step3. delete handler.
 	delete _log_handler;
 	_log_handler = nullptr;
@@ -352,5 +372,12 @@ int tinylog::finish()
 	return res;
 }
 
+bool tinylog::is_writeable()
+{
+	if (!_is_start)
+		return false;
+	
+	return _is_writeable;
+}
 
 // END OF FILE: tinylog.cc

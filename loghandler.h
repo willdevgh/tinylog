@@ -1,6 +1,8 @@
 #ifndef __TINYLOG_DATAHANDLER__
 #define __TINYLOG_DATAHANDLER__
 
+#include <unistd.h>
+
 #include "autot/auto_tchar.h"
 #include "workthread/handler.h"
 #include "tinylog.h"
@@ -21,6 +23,8 @@ public:
 			_ftprintf(_ptr_log->_logfile, ts.c_str());
 			fflush(_ptr_log->_logfile);
 		}
+		else
+			usleep(500000); // 0.5 sec
 	};
 	
 private:	

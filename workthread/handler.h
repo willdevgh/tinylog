@@ -1,6 +1,8 @@
 #ifndef __HANDLER__
 #define __HANDLER__
 
+#include <thread>
+
 #include "event.h"
 #include "queue.h"
 
@@ -13,19 +15,25 @@ public:
 	void put(const T &t)
 	{
 		_mq.push(t);
-		e_put_data_in_mq.notify_one();
+	//	e_put_data_in_mq.notify_one();
 	};
+
+	void notify() { e_put_data_in_mq.notify_one(); };
 	
 	void wait4processover() 
 	{
 		while (!_mq.empty())
-			e_mq_is_empty.timed_wait(1);
+		{
+			e_put_data_in_mq.notify_one();
+			e_after_loop.timed_wait(0);
+		}
 	};
 
 	int buffersize() { return (int)_mq.size(); };
 
 	void clearbuffer() { _mq.clear(); };
 
+	void forcewait(bool wait_or_not = true) { _force_wait = wait_or_not; }
 	bool threadstart()
 	{
 		if (_workthread != 0)
@@ -61,7 +69,7 @@ protected:
 		{
 			e_put_data_in_mq.wait();
 
-			while (!_mq.empty())
+			while (!_force_wait && !_mq.empty())
 			{
 				T t;
 				if (_mq.get(t))
@@ -70,20 +78,20 @@ protected:
 				}
 			}
 			
-			e_mq_is_empty.notify_one();
+			e_after_loop.notify_one();
 		}
-		
-		//e_thread_exit.notify_one();
 	};
 
 	std::thread thr;
 	std::thread::native_handle_type _workthread = 0;
 	bool _exit = true;
+	bool _force_wait = false;
 	queue<T> _mq; // message queue.
 	
 	event e_put_data_in_mq;
-	event e_mq_is_empty;
-	//event e_thread_exit;
+	event e_after_loop;
+	
+	bool _enable_notify = true;
 };
 
 #endif // __HANDLER__

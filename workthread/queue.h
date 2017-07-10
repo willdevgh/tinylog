@@ -2,8 +2,7 @@
 #define __QUEUE__
 
 #include <deque>
-#include "lock.h"
-
+#include <mutex>
 
 template<class T>
 class queue: public std::deque<T>
@@ -14,19 +13,19 @@ public:
 
 	void push(const T &t)
 	{
-		scopedlock slock;
+		std::lock_guard<std::mutex> lock(_mutex);
 		std::deque<T>::push_back(t);
 	}
 
 	void push(T &&t)
 	{
-		scopedlock slock;
+		std::lock_guard<std::mutex> lock(_mutex);
 		std::deque<T>::push_back(std::move(t));
 	}
 	
 	bool get(T &t)
 	{
-		scopedlock slock;
+		std::lock_guard<std::mutex> lock(_mutex);
 		if (!std::deque<T>::empty())
 		{
 			t = std::deque<T>::front();
@@ -39,11 +38,11 @@ public:
 
 	void clear()
 	{
-		scopedlock slock;
+		std::lock_guard<std::mutex> lock(_mutex);
 		std::deque<T>::clear();
 	}
 private:
-	// nothing for now.
+	std::mutex _mutex;
 };
 
 

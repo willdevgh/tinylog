@@ -2,6 +2,8 @@
 #define __TINYLOG__
 
 #include <string>
+#include <memory>
+#include <mutex>
 
 #include <errno.h>
 #include <stdio.h>
@@ -68,7 +70,7 @@ public:
 	tinylog() {};
 	~tinylog() 
 	{
-		finish();
+		//finish();
 	};
 
 	friend class loghandler;
@@ -95,6 +97,7 @@ public:
 	};
 
 	int is_start() const { return _is_start; };
+	bool is_writeable();
 
 	static tstring getdate(const TCHAR *sep = _T(""));
 	static tstring gettime(const TCHAR *sep = _T(""));
@@ -111,12 +114,17 @@ private:
 	
 private:
 	loghandler *_log_handler = nullptr;
+	//std::unique_ptr<loghandler> _log_handler;
 	bool _is_start = false;
+	bool _is_writeable = true;
 	tstring _base_name;
 	tstring _ext;
 	tstring _path;
+	tstring _curr_file;
 	long _log_size_max = 1024 * 5; // 5MB for default log size.
 	FILE *_logfile = nullptr;
+
+	std::mutex _mut;
 };
 
 #endif /* __TINYLOG__ */

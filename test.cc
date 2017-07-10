@@ -6,7 +6,6 @@
 
 int _tmain(void)
 {
-
 	std::cout << tinylog::getdate(_T("-")) << std::endl;
 	std::cout << tinylog::gettime(_T(":")) << std::endl;
 	std::cout << tinylog::getdatetime(_T("-"), _T(":"), _T(" ")) << std::endl;

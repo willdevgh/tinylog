@@ -1,9 +1,10 @@
 #ifndef __EVENT__
 #define __EVENT__
 
-#include "lock.h"
+#include <mutex>
 #include <condition_variable>
 #include <chrono>
+
 
 class event final
 {
@@ -17,14 +18,14 @@ public:
 	
 	void wait()
 	{
-		scopedlock slock;
-		_condition.wait(slock);
+		std::lock_guard<std::mutex> lock(_mutex);
+		_condition.wait(_mutex);
 	};
 	
 	void timed_wait(int sec)
 	{
-		scopedlock slock;
-		_condition.wait_for(slock, std::chrono::seconds(sec));
+		std::lock_guard<std::mutex> lock(_mutex);
+		_condition.wait_for(_mutex, std::chrono::seconds(sec));
 	}
 	
 	void notify_one() 
@@ -38,6 +39,7 @@ public:
 	}
 
 private:
+	std::mutex _mutex;
 	std::condition_variable_any _condition;
 };
 
