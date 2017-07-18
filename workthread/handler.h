@@ -12,14 +12,16 @@ public:
 	handler() = default;
 	virtual ~handler() {};
 	
-	void put(const T &t)
-	{
-		_mq.push(t);
-	//	e_put_data_in_mq.notify_one();
-	};
+	void put(const T &t) { _mq.push(t); };
 
 	void notify() { e_put_data_in_mq.notify_one(); };
 	
+	void put_notify(const T &t)
+	{
+		_mq.push(t);
+		e_put_data_in_mq.notify_one();
+	};
+
 	void wait4processover() 
 	{
 		while (!_mq.empty())
@@ -36,28 +38,29 @@ public:
 	void forcewait(bool wait_or_not = true) { _force_wait = wait_or_not; }
 	bool threadstart()
 	{
-		if (_workthread != 0)
+		if (_th != 0)
 			return false;
 
 		_exit = false;
-		thr = std::thread(&handler::handler_thread, this);
-		_workthread = thr.native_handle();
+		_thr = std::thread(&handler::handler_thread, this);
+		_th = _thr.native_handle();
 		
 		return true;
 	}
 	
+	std::thread::id gettid() const { return _thr.get_id(); };	
+	
 	void threadexit()
 	{
-		if (_workthread == 0)
+		if (_th == 0)
 			return;
 
 		_exit = true;
 		e_put_data_in_mq.notify_one();
-		//e_thread_exit.wait();
-		if (thr.joinable())
-			thr.join();
+		if (_thr.joinable())
+			_thr.join();
 		
-		_workthread = 0;
+		_th = 0;
 	}
 
 protected:
@@ -82,8 +85,9 @@ protected:
 		}
 	};
 
-	std::thread thr;
-	std::thread::native_handle_type _workthread = 0;
+	std::thread _thr;
+	std::thread::native_handle_type _th = 0;
+	std::thread::id _tid;
 	bool _exit = true;
 	bool _force_wait = false;
 	queue<T> _mq; // message queue.

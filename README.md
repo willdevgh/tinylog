@@ -1,1 +1,1 @@
-Ver 1.2beta 
+Ver 1.3beta 

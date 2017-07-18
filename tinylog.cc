@@ -87,19 +87,6 @@ tstring tinylog::getdatetime(const TCHAR *dsep /*= _T("")*/, const TCHAR *tsep /
 	return datetime_buff;
 }
 
-tstring tinylog::makeindex(int idx)
-{
-	if (idx > 9999)
-		return _T("");
-
-	TCHAR idx_buff[8];
-	memset(idx_buff, 0x00, sizeof idx_buff);
-	
-	_sntprintf(idx_buff, sizeof(idx_buff),_T("%04d"), idx);
-
-	return idx_buff;
-}
-
 tstring tinylog::getindex()
 {
 	tstring log_index;
@@ -113,7 +100,7 @@ tstring tinylog::getindex()
         return _T("");
     }
 	
-	tstring curr_date = getdate();
+	tstring curr_base_name, curr_date = getdate();
 	tstring temp_name, temp_index;
 	int idx = 0, max_index = 0, curr_index = 0;
     while((pde = readdir(pd)) != nullptr)
@@ -127,6 +114,10 @@ tstring tinylog::getindex()
 			continue;
 		
 		if (temp_name.find(curr_date) == tstring::npos)
+			continue;
+
+		curr_base_name = getbasename(temp_name.c_str());
+		if (curr_base_name != _base_name)
 			continue;
 
 		idx = (int)temp_name.rfind(_T("_"));
@@ -144,6 +135,33 @@ tstring tinylog::getindex()
 	pd = nullptr;
 
 	return log_index;
+}
+
+tstring tinylog::makeindex(int idx)
+{
+	if (idx > 9999)
+		return _T("");
+
+	TCHAR idx_buff[8];
+	memset(idx_buff, 0x00, sizeof idx_buff);
+	
+	_sntprintf(idx_buff, sizeof(idx_buff),_T("%04d"), idx);
+
+	return idx_buff;
+}
+
+tstring tinylog::getindex(const TCHAR *filename)
+{
+	tstring sfilename = filename;
+	int idx = (int)sfilename.rfind(_T("_"));
+	return sfilename.substr(idx + 1, 4);
+}
+
+tstring tinylog::getbasename(const TCHAR *filename)
+{
+	tstring sfilename = filename;
+	int idx = (int)sfilename.find(_T("_"));
+	return sfilename.substr(0, idx);
 }
 
 tstring tinylog::makefullpathname(const TCHAR *date, const TCHAR *idx)
@@ -175,7 +193,7 @@ tstring tinylog::loglevelstr(LOGLV lv)
 		return _T("INFO");
 	case LL_ERROR:
 		return _T("ERROR");
-	case LL_HEXDUMP:
+	case LL_DATDUMP:
 		return _T("HEXDUMP");
 	default:
 		return _T("XXXX");
@@ -185,7 +203,7 @@ tstring tinylog::loglevelstr(LOGLV lv)
 int tinylog::open(FILE **ppf)
 {
 	/*
-		找到当前日期最大索引的日志文件：
+		找到当前日期当前日志basename的最大索引的日志文件：
 		1.若没找到，则新建日志文件，索引从"0001"开始。
 		2.若找到，判断文件大小：
 			2.1.若小于_log_size_max，打开文件。
@@ -244,38 +262,58 @@ int tinylog::close(FILE *pf)
 	return LOGERR_OK;
 }
 
-int tinylog::writeline(const TCHAR *file, int line, LOGLV lv, const TCHAR *fmt, va_list arglist)
+int tinylog::writeline(const TCHAR *file, int line, LOGLV lv, const void *input, va_list arglist)
 {
-	if (lv == LL_HEXDUMP)
+	if (lv == LL_DATDUMP)
 	{
-		// not available yet.
-	}
-	else
-	{
-		tstring curr_time = gettime(_T(":"));
-		tstring log_level = loglevelstr(lv);
-		TCHAR formatbuff[MAXLINESIZE];
-		memset(formatbuff, 0x00, sizeof formatbuff);
-		_vsntprintf(formatbuff, MAXLINESIZE, fmt, arglist);
-		formatbuff[MAXLINESIZE-1] = '\0';
+		/*
+			todo: dump log 
+			参数 1、5 忽略！
+			缓冲区中数据不是C风格字符串，故以 line 作为数据长度传入。
+			data dump -- dumphex 函数写日志过程中
+			若文件大小超过 _log_size_max 不切换 保证数据在文件中连续 ！！！
+			需解决多线程写日志的混乱问题...
+		*/
+		dumphex(nullptr, input, line);
 
-		TCHAR linebuff[MAXLINESIZE*2];
-		memset(linebuff, 0x00, sizeof linebuff);
-		_sntprintf(linebuff, sizeof(linebuff), _T("%s[%s][%s][%d]: %s\n"), 
-			curr_time.c_str(), log_level.c_str(), file, line, formatbuff);
+		return LOGERR_OK;
+	}
+	else if (lv == LL_DATDUMP_MT)
+	{
+		/*
+			todo: dump log mt
+			参数1为dump文件名，参数5仍然忽略。
+			新建文件并写入(writedump)。
+			最后在该分支直接return
+		*/
 		
-		_log_handler->put(linebuff);
+		dumphex(makehexfilename(file).c_str(), input, line);
+		
+		return LOGERR_OK;
 	}
+	
+	
+	tstring curr_time = gettime(_T(":"));
+	tstring log_level = loglevelstr(lv);
+	TCHAR formatbuff[MAXLINESIZE];
+	memset(formatbuff, 0x00, sizeof formatbuff);
+	_vsntprintf(formatbuff, MAXLINESIZE, (const TCHAR *)input, arglist);
+	formatbuff[MAXLINESIZE-1] = '\0';
 
-	// buggy code
-	//if (ftell(_logfile) > _log_size_max * 1024)
+	TCHAR linebuff[MAXLINESIZE*2];
+	memset(linebuff, 0x00, sizeof linebuff);
+	_sntprintf(linebuff, sizeof(linebuff), _T("%s[%s][%s][%d]: %s\n"), 
+		curr_time.c_str(), log_level.c_str(), file, line, formatbuff);
+	
+	_log_handler->put(linebuff);
+
+
+	// check if need a rotation(switch a new file to write).
 	if (getlogsize(_curr_file.c_str()) > _log_size_max)
 	{
-		//_log_handler->forcewait(true);
-		// one thread switch file and others just put in queue.
+		// one thread switch file and others just put in queue(without notify()).
 		if (_mut.try_lock())
 		{
-			//_log_handler->wait4processover();
 			_log_handler->forcewait(true);
 
 			int err = LOGERR_OK;
@@ -299,6 +337,113 @@ int tinylog::writeline(const TCHAR *file, int line, LOGLV lv, const TCHAR *fmt, 
 
 	return LOGERR_OK;
 }
+
+int tinylog::dumpline(FILE *file, unsigned int addr, const void *buf, int bytes)
+{
+	int i, pos;
+	TCHAR line[80 + 1];
+	const TCHAR SPACE = _T(' ');
+	memset(line, 0x00, sizeof line);
+	
+	pos = _stprintf(line, _T("%08X"), addr);
+	byte *membuf = (byte *)buf;
+	
+	// hex content:
+	for (i = 0; i < 16; ++i)
+	{
+		if (i % 8 == 0)
+			line[pos++] = SPACE;
+		
+		if (i < bytes)
+			pos += _stprintf(line + pos, _T("%02x "), membuf[i]);
+		else
+			pos += _stprintf(line + pos, _T("   ")); // 3 spaces
+	}
+
+	pos += _stprintf(line + pos, _T(" |"));
+
+	// printable content
+	for (i = 0; i < bytes; ++i)
+	{
+		line[pos++] = _istprint(membuf[i]) ? 
+			membuf[i] : _T('.');
+	}
+
+	pos += _stprintf(line + pos, _T("|\n"));
+
+	tstring temp;
+	temp.assign(line, pos);
+
+	if (file != nullptr)
+		writedump(file, line, pos);
+	else
+		_log_handler->put_notify(temp);
+
+	return pos;
+}
+
+int tinylog::dumphex(const TCHAR *hexfile, const void *data, int bytes)
+{
+	int i, dump_len = 0;
+	TCHAR title[] = _T("--addr--**0--1--2--3--4--5--6--7-**8--9--a--b--c--d--e--f-*|------text------|\r\n");
+	byte *membuf = (byte *)data;
+
+	FILE *file = nullptr;
+	if (hexfile != nullptr)
+	{
+		file = _tfopen(hexfile, _T("a"));
+		writedump(file, title, sizeof(title) - 1); // ignore NUL
+	}
+	else
+	{
+		_log_handler->put_notify(title);
+	}
+	
+
+	for (i = 0; i < (bytes / 16); ++i)
+	{
+		dump_len += dumpline(file, 16 * i, membuf + 16 * i, 16);
+	}
+
+	// 不足16字节的部分
+	if (bytes % 16 != 0)
+	{
+		dump_len += dumpline(file, 16 * i, membuf + 16 * i, bytes % 16);
+	}
+
+	if (file != nullptr || hexfile != nullptr)
+	{
+		fclose(file);
+	}
+
+	return dump_len;
+}
+
+int tinylog::writedump(FILE *file, const void *data, int bytes)
+{
+	int writenbytes = (int)fwrite(data, 1, bytes, file);
+	fflush(file);
+	return writenbytes;
+}
+
+tstring tinylog::makehexfilename(const TCHAR *hexfile)
+{
+	tstringstream tss;
+	tss << _log_handler->gettid();
+	TCHAR finalname[128];
+	memset(finalname, 0x00, sizeof finalname);
+
+	_sntprintf(finalname, sizeof(finalname), _T("%s/%s_%s_%s.hex"),
+		_path.c_str(),
+		hexfile, 
+		getdatetime(_T(""), _T(""), _T("")).c_str(), 
+		tss.str().c_str());
+	
+	return finalname;
+}
+
+
+
 
 // ********** log interfaces ********** 接口
 int tinylog::start(const TCHAR *base_name, const TCHAR *ext, const TCHAR *path)
@@ -331,27 +476,28 @@ int tinylog::start(const TCHAR *base_name, const TCHAR *ext, const TCHAR *path)
 	return LOGERR_OK;
 }
 
-int tinylog::write(const TCHAR * f, int l, LOGLV lv, const TCHAR * fmt, ...)
+int tinylog::write(const TCHAR * f, int l, LOGLV lv, const void *input, ...)
 {
 	if (!_is_start)
 		return LOGERR_NOTSTART;
 
-	if (fmt == nullptr || _tcslen(fmt) == 0 || lv > LL_LVCNT)
+	if (input == nullptr || lv > LL_LVCNT)
 		return LOGERR_PARAM;
 
 	int err = LOGERR_OK;
 	va_list arglist;
-
-	va_start(arglist, fmt);
-	err = writeline(f, l, lv, fmt, arglist);
-	va_end(arglist);
- 
+	if (lv != LL_DATDUMP)
+	{
+		va_start(arglist, (const TCHAR *)input);
+		err = writeline(f, l, lv, (const TCHAR *)input, arglist);
+		va_end(arglist);
+	}
+	else
+	{
+		// 'f' and 'arglist' are not use.
+		err = writeline(f, l, lv, input, arglist);
+	} 
 	return err;
-}
-
-int tinylog::hexdump(const TCHAR * dat, int len)
-{
-	return LOGERR_OK;
 }
 
 int tinylog::finish()
@@ -370,14 +516,6 @@ int tinylog::finish()
 	_log_handler = nullptr;
 
 	return res;
-}
-
-bool tinylog::is_writeable()
-{
-	if (!_is_start)
-		return false;
-	
-	return _is_writeable;
 }
 
 // END OF FILE: tinylog.cc

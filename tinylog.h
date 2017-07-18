@@ -1,6 +1,7 @@
 #ifndef __TINYLOG__
 #define __TINYLOG__
 
+#include <sstream>
 #include <string>
 #include <memory>
 #include <mutex>
@@ -31,8 +32,9 @@ const int MAXLINESIZE = 1024;
 #include "autot/prichar.h"
 
 class loghandler;
-typedef std::basic_string<TCHAR> tstring;
-typedef std::basic_stringstream<TCHAR> tstringstream;
+using tstring = std::basic_string<TCHAR>;
+using tstringstream = std::basic_stringstream<TCHAR>;
+using byte = unsigned char;
 
 const int TL_FILENAME_MAX = 256;
 const int TL_FILEEXT_MAX = 3;
@@ -60,7 +62,8 @@ enum LOGLV
 	LL_DEBUG = 0,
 	LL_INFO,
 	LL_ERROR,
-	LL_HEXDUMP,
+	LL_DATDUMP,
+	LL_DATDUMP_MT,
 	LL_LVCNT
 };
 
@@ -76,8 +79,7 @@ public:
 	friend class loghandler;
 	// log interfaces
 	int start(const TCHAR *base_name, const TCHAR *ext, const TCHAR *path);
-	int write(const TCHAR *f, int l, LOGLV lv, const TCHAR *fmt, ...);
-	int hexdump(const TCHAR *dat, int len);
+	int write(const TCHAR *f, int l, LOGLV lv, const void *input, ...);
 	int finish();
 
 	void set_max_size(long size)
@@ -97,7 +99,6 @@ public:
 	};
 
 	int is_start() const { return _is_start; };
-	bool is_writeable();
 
 	static tstring getdate(const TCHAR *sep = _T(""));
 	static tstring gettime(const TCHAR *sep = _T(""));
@@ -105,18 +106,23 @@ public:
 private:
 	tstring getindex();
 	tstring makeindex(int idx);
+	tstring getindex(const TCHAR *filename);
+	tstring getbasename(const TCHAR *filename);
 	tstring makefullpathname(const TCHAR *date, const TCHAR *idx); 
 	long getlogsize(const TCHAR *logfile); // KB
 	tstring loglevelstr(LOGLV lv);
 	int open(FILE **ppf);
 	int close(FILE *pf);
-	int writeline(const TCHAR *file, int line, LOGLV lv, const TCHAR *fmt, va_list arglist);
-	
+	int writeline(const TCHAR *file, int line, LOGLV lv, const void *fmt, va_list arglist);
+	int dumpline(FILE *file, unsigned int addr, const void *buf, int bytes);
+	int dumphex(const TCHAR *hexfile, const void *data, int bytes);
+	int writedump(FILE *file, const void *data, int bytes);
+	tstring makehexfilename(const TCHAR *hexfile);
+
 private:
 	loghandler *_log_handler = nullptr;
-	//std::unique_ptr<loghandler> _log_handler;
 	bool _is_start = false;
-	bool _is_writeable = true;
+	//bool _is_dumping = false;
 	tstring _base_name;
 	tstring _ext;
 	tstring _path;

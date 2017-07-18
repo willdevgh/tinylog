@@ -1,0 +1,19 @@
+tinylog - new features/enhancements & bug-fixes:
+
+1.3beta
+Fix: 打开日志时获取最大索引号未判断basename导致新basename的日志索引号未从0001开始。
+Add: 内存数据dump到日志的功能：单线程写日志方式下，直接输出到日志；多线程写日志方式下，单独写入文件，后缀为hex。
+date: 2017-07-18
+
+1.2beta
+Fix: 多线程下segmentition fault，写日志过程卡死。
+Add: 多线程demo（可测试使用）
+date: 2017-07-10 
+
+1.1beta
+Add: 写日志简化接口
+date: 2017-07-04
+
+1.0beta
+Add: first version 第一个版本
+date: 2017-07-04
