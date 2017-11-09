@@ -1,8 +1,13 @@
-#ifndef __LOGITF__
-#define __LOGITF__
+#ifdef __LOGITF_CI__
+	#error "include header error!!"
+#endif
+
+#ifndef __LOGITF_SI__
+#define __LOGITF_SI__
 
 #include "tinylog.h"
 
+// 日志对象为全局对象g_log
 #define LOGDEBUG(fmt, ...) g_log.write(__FILE__, __LINE__, LL_DEBUG, fmt, ##__VA_ARGS__)
 #define LOGINFO(fmt, ...) g_log.write(__FILE__, __LINE__, LL_INFO, fmt, ##__VA_ARGS__)
 #define LOGERROR(fmt, ...) g_log.write(__FILE__, __LINE__, LL_ERROR, fmt, ##__VA_ARGS__)
@@ -11,4 +16,4 @@
 
 extern tinylog g_log;
 
-#endif // __LOGITF__
+#endif // __LOGITF_SI__

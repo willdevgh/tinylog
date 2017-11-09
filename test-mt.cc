@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
-#include "logitf.h"
+#include "logitf_si.h"
 #include "tinylog.h"
 
 const TCHAR *datfile = _T("test");
