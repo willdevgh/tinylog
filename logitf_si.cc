@@ -1,3 +1,3 @@
 #include "tinylog.h"
 
-tinylog g_log;
+tl::tinylog g_log;

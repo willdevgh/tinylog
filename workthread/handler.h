@@ -6,6 +6,8 @@
 #include "event.h"
 #include "queue.h"
 
+namespace tl {
+
 template <class T> class handler
 {
 public:
@@ -97,5 +99,7 @@ protected:
 	
 	bool _enable_notify = true;
 };
+
+} // namespace tl
 
 #endif // __HANDLER__

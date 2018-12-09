@@ -7,11 +7,13 @@
 #include "workthread/handler.h"
 #include "tinylog.h"
 
+namespace tl {
+
 class loghandler: public handler<tstring>
 {
 public:
 	loghandler() = default;
-	virtual ~loghandler() {};
+	virtual ~loghandler() = default;
 
 	void sethandle(tinylog *log) { _ptr_log = log; };
 
@@ -31,6 +33,6 @@ private:
 	tinylog *_ptr_log = nullptr;
 };
 
-
+} // namespace tl
 
 #endif // __TINYLOG_DATAHANDLER__

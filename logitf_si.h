@@ -6,6 +6,7 @@
 #define __LOGITF_SI__
 
 #include "tinylog.h"
+using namespace tl;
 
 // 日志对象为全局对象g_log
 #define LOGDEBUG(fmt, ...) g_log.write(__FILE__, __LINE__, LL_DEBUG, fmt, ##__VA_ARGS__)

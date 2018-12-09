@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <chrono>
 
+namespace tl {
 
 class event final
 {
@@ -43,5 +44,6 @@ private:
 	std::condition_variable_any _condition;
 };
 
+} // namespace tl
 
 #endif // __EVENT__

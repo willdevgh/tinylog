@@ -4,6 +4,8 @@
 #include <deque>
 #include <mutex>
 
+namespace tl {
+
 template<class T>
 class queue: public std::deque<T>
 {
@@ -45,6 +47,6 @@ private:
 	std::mutex _mutex;
 };
 
-
+} // namespace tl
 
 #endif // __QUEUE__

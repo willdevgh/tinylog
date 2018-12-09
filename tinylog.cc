@@ -1,6 +1,8 @@
 #include "tinylog.h"
 #include "loghandler.h"
 
+namespace tl {
+
 const TCHAR * g_error_string[LOGERR_TOTALNUM] = {
 _T("LOGERR_OK"),
 _T("LOGERR_PARAM"),
@@ -517,5 +519,7 @@ int tinylog::finish()
 
 	return res;
 }
+
+} // namespace tl
 
 // END OF FILE: tinylog.cc

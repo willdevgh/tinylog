@@ -19,17 +19,21 @@
 
 //#if defined  __linux__
 # include <linux/limits.h>
+
+// following 2 header files are copied from: 
+// http://www.cnblogs.com/zyl910/archive/2013/01/17/tcharall.html
+#include "autot/auto_tchar.h"
+#include "autot/prichar.h"
+
+
+namespace tl {
+
 const int TL_PATH_MAX = PATH_MAX;
 //#else
 //const int TL_PATH_MAX = 4096;
 //#endif
 
 const int MAXLINESIZE = 1024;
-
-// following 2 header files are copied from: 
-// http://www.cnblogs.com/zyl910/archive/2013/01/17/tcharall.html
-#include "autot/auto_tchar.h"
-#include "autot/prichar.h"
 
 class loghandler;
 using tstring = std::basic_string<TCHAR>;
@@ -132,6 +136,8 @@ private:
 
 	std::mutex _mut;
 };
+
+} // namespace tl
 
 #endif /* __TINYLOG__ */
 // END OF FILE: tinylog.h
