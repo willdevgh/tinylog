@@ -12,30 +12,30 @@ template <class T> class handler
 {
 public:
 	handler() = default;
-	virtual ~handler() {};
+	virtual ~handler() = default;
 	
-	void put(const T &t) { _mq.push(t); };
+	void put(const T &t) { _que.push(t); };
 
-	void notify() { e_put_data_in_mq.notify_one(); };
+	void notify() { e_put_data_in_que.notify_one(); };
 	
 	void put_notify(const T &t)
 	{
-		_mq.push(t);
-		e_put_data_in_mq.notify_one();
+		_que.push(t);
+		e_put_data_in_que.notify_one();
 	};
 
 	void wait4processover() 
 	{
-		while (!_mq.empty())
+		while (!_que.empty())
 		{
-			e_put_data_in_mq.notify_one();
+			e_put_data_in_que.notify_one();
 			e_after_loop.timed_wait(0);
 		}
 	};
 
-	int buffersize() { return (int)_mq.size(); };
+	int buffersize() { return (int)_que.size(); };
 
-	void clearbuffer() { _mq.clear(); };
+	void clearbuffer() { _que.clear(); };
 
 	void forcewait(bool wait_or_not = true) { _force_wait = wait_or_not; }
 	bool threadstart()
@@ -58,7 +58,7 @@ public:
 			return;
 
 		_exit = true;
-		e_put_data_in_mq.notify_one();
+		e_put_data_in_que.notify_one();
 		if (_thr.joinable())
 			_thr.join();
 		
@@ -72,12 +72,12 @@ protected:
 	{
 		while (_exit == false)
 		{
-			e_put_data_in_mq.wait();
+			e_put_data_in_que.wait();
 
-			while (!_force_wait && !_mq.empty())
+			while (!_force_wait && !_que.empty())
 			{
 				T t;
-				if (_mq.get(t))
+				if (_que.get(t))
 				{
 					handler_func(t);
 				}
@@ -89,15 +89,11 @@ protected:
 
 	std::thread _thr;
 	std::thread::native_handle_type _th = 0;
-	std::thread::id _tid;
 	bool _exit = true;
 	bool _force_wait = false;
-	queue<T> _mq; // message queue.
-	
-	event e_put_data_in_mq;
+	queue<T> _que; // log line queue.
+	event e_put_data_in_que;
 	event e_after_loop;
-	
-	bool _enable_notify = true;
 };
 
 } // namespace tl

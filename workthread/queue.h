@@ -1,13 +1,13 @@
 #ifndef __QUEUE__
 #define __QUEUE__
 
-#include <deque>
+#include <queue>
 #include <mutex>
 
 namespace tl {
 
-template<class T>
-class queue: public std::deque<T>
+template<typename T>
+class queue final
 {
 public:
 	queue() = default;
@@ -16,34 +16,40 @@ public:
 	void push(const T &t)
 	{
 		std::lock_guard<std::mutex> lock(_mutex);
-		std::deque<T>::push_back(t);
+		_queue.push(t);
 	}
 
 	void push(T &&t)
 	{
 		std::lock_guard<std::mutex> lock(_mutex);
-		std::deque<T>::push_back(std::move(t));
+		_queue.push(std::forward(t));
 	}
 	
 	bool get(T &t)
 	{
 		std::lock_guard<std::mutex> lock(_mutex);
-		if (!std::deque<T>::empty())
+		if (!_queue.empty())
 		{
-			t = std::deque<T>::front();
-			std::deque<T>::pop_front();
+			t = _queue.front();
+			_queue.pop();
 			return true;
 		}
 		
 		return false;
 	}
 
+    bool empty() const
+    {
+        return _queue.empty();
+    }
+
 	void clear()
 	{
 		std::lock_guard<std::mutex> lock(_mutex);
-		std::deque<T>::clear();
+		_queue.clear();
 	}
 private:
+    std::queue<T> _queue;
 	std::mutex _mutex;
 };
 
