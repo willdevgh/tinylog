@@ -1,6 +1,9 @@
 /logs/
+*.log
 *.gch
-*.o
+*.[ao]
+*~
+todo.txt
 
 # unit test
 test
