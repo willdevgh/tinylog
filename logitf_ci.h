@@ -6,7 +6,6 @@
 #define __LOGITF_CI__
 
 #include "tinylog.h"
-using namespace tl;
 
 // 由调用者给出日志对象ins
 #define LOGDEBUG(ins, fmt, ...) ins.write(__FILE__, __LINE__, LL_DEBUG, fmt, ##__VA_ARGS__)

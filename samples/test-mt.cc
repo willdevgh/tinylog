@@ -7,8 +7,6 @@ test-mt: 多线程写日志测试
 #include <thread>
 #include "logitf_si.h"
 #include "tinylog.h"
-using namespace tl;
-
 
 const TCHAR *datfile = _T("test");
 static long getsize(const TCHAR *filename)
