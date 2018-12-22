@@ -1,5 +1,6 @@
 #include "tinylog.h"
 #include "loghandler.h"
+#include <iostream>
 
 namespace tl {
 
@@ -28,9 +29,9 @@ tstring tinylog::getdate(const TCHAR *sep /*= _T("")*/)
     time_t ti = time(nullptr);
 	struct tm *pt = localtime(&ti);
     TCHAR date_buff[32];
-    memset(date_buff, 0x00, sizeof date_buff);
+    memset(date_buff, 0x00, sizeof(date_buff));
 
-	_sntprintf(date_buff, sizeof(date_buff), _T("%04d%s%02d%s%02d"), 
+	_sntprintf(date_buff, sizeof(date_buff)/sizeof(TCHAR), _T("%04d%s%02d%s%02d"), 
 		pt->tm_year + 1900, separator.c_str(), pt->tm_mon + 1, separator.c_str(), pt->tm_mday);
 	
     return date_buff;
@@ -48,9 +49,9 @@ tstring tinylog::gettime(const TCHAR *sep /*= _T("")*/)
     time_t ti = time(nullptr);
 	struct tm *pt = localtime(&ti);
     TCHAR time_buff[32];
-    memset(time_buff, 0x00, sizeof time_buff);
+    memset(time_buff, 0x00, sizeof(time_buff));
 
-	_sntprintf(time_buff, sizeof(time_buff), _T("%02d%s%02d%s%02d"), 
+	_sntprintf(time_buff, sizeof(time_buff)/sizeof(TCHAR), _T("%02d%s%02d%s%02d"), 
 		pt->tm_hour, separator.c_str(), pt->tm_min, separator.c_str(), pt->tm_sec);
 	
 	return time_buff; 
@@ -79,9 +80,9 @@ tstring tinylog::getdatetime(const TCHAR *dsep /*= _T("")*/, const TCHAR *tsep /
 	struct tm *pt = localtime(&ti);
     TCHAR datetime_buff[32];
 
-    memset(datetime_buff, 0x00, sizeof datetime_buff);
+    memset(datetime_buff, 0x00, sizeof(datetime_buff));
 
-	_sntprintf(datetime_buff, sizeof(datetime_buff), _T("%04d%s%02d%s%02d%s%02d%s%02d%s%02d"), 
+	_sntprintf(datetime_buff, sizeof(datetime_buff)/sizeof(TCHAR), _T("%04d%s%02d%s%02d%s%02d%s%02d%s%02d"), 
 		pt->tm_year + 1900, dseparator.c_str(), pt->tm_mon + 1, dseparator.c_str(), pt->tm_mday,
 		dtsep,
 		pt->tm_hour, tseparator.c_str(), pt->tm_min, tseparator.c_str(), pt->tm_sec);
@@ -107,8 +108,8 @@ tstring tinylog::getindex()
 	int idx = 0, max_index = 0, curr_index = 0;
     while((pde = readdir(pd)) != nullptr)
     {
-		memset(filename, 0x00, sizeof filename);
-		_sntprintf(filename, sizeof(filename), _T("%s/%s"), _path.c_str(), pde->d_name);
+		memset(filename, 0x00, sizeof(filename));
+		_sntprintf(filename, sizeof(filename)/sizeof(TCHAR), _T("%s/%s"), _path.c_str(), pde->d_name);
 		temp_name = pde->d_name;
 		stat(filename, &filestat);
 		
@@ -147,7 +148,7 @@ tstring tinylog::makeindex(int idx)
 	TCHAR idx_buff[8];
 	memset(idx_buff, 0x00, sizeof idx_buff);
 	
-	_sntprintf(idx_buff, sizeof(idx_buff),_T("%04d"), idx);
+	_sntprintf(idx_buff, sizeof(idx_buff)/sizeof(TCHAR), _T("%04d"), idx);
 
 	return idx_buff;
 }
@@ -170,7 +171,7 @@ tstring tinylog::makefullpathname(const TCHAR *date, const TCHAR *idx)
 {
 	TCHAR fullpathname[TL_FILENAME_MAX];
 	memset(fullpathname, 0x00, sizeof fullpathname);
-	_sntprintf(fullpathname, sizeof(fullpathname), _T("%s/%s_%s_%s%s"),
+	_sntprintf(fullpathname, sizeof(fullpathname)/sizeof(TCHAR), _T("%s/%s_%s_%s%s"),
 		_path.c_str(), _base_name.c_str(), date, idx, _ext.c_str());
 	
 	return fullpathname;
@@ -274,7 +275,6 @@ int tinylog::writeline(const TCHAR *file, int line, LOGLV lv, const void *input,
 			缓冲区中数据不是C风格字符串，故以 line 作为数据长度传入。
 			data dump -- dumphex 函数写日志过程中
 			若文件大小超过 _log_size_max 不切换 保证数据在文件中连续 ！！！
-			需解决多线程写日志的混乱问题...
 		*/
 		dumphex(nullptr, input, line);
 
@@ -283,7 +283,6 @@ int tinylog::writeline(const TCHAR *file, int line, LOGLV lv, const void *input,
 	else if (lv == LL_DATDUMP_MT)
 	{
 		/*
-			todo: dump log mt
 			参数1为dump文件名，参数5仍然忽略。
 			新建文件并写入(writedump)。
 			最后在该分支直接return
@@ -298,13 +297,13 @@ int tinylog::writeline(const TCHAR *file, int line, LOGLV lv, const void *input,
 	tstring curr_time = gettime(_T(":"));
 	tstring log_level = loglevelstr(lv);
 	TCHAR formatbuff[MAXLINESIZE];
-	memset(formatbuff, 0x00, sizeof formatbuff);
+	memset(formatbuff, 0x00, sizeof(formatbuff));
 	_vsntprintf(formatbuff, MAXLINESIZE, (const TCHAR *)input, arglist);
 	formatbuff[MAXLINESIZE-1] = '\0';
 
 	TCHAR linebuff[MAXLINESIZE*2];
 	memset(linebuff, 0x00, sizeof linebuff);
-	_sntprintf(linebuff, sizeof(linebuff), _T("%s[%s][%s][%d]: %s\n"), 
+	_sntprintf(linebuff, sizeof(linebuff)/sizeof(TCHAR), _T("%s[%s][%s][%d]: %s\n"), 
 		curr_time.c_str(), log_level.c_str(), file, line, formatbuff);
 	
 	_log_handler->put(linebuff);
@@ -345,7 +344,7 @@ int tinylog::dumpline(FILE *file, unsigned int addr, const void *buf, int bytes)
 	int i, pos;
 	TCHAR line[80 + 1];
 	const TCHAR SPACE = _T(' ');
-	memset(line, 0x00, sizeof line);
+	memset(line, 0x00, sizeof(line));
 	
 	pos = _stprintf(line, _T("%08X"), addr);
 	byte *membuf = (byte *)buf;
@@ -367,19 +366,45 @@ int tinylog::dumpline(FILE *file, unsigned int addr, const void *buf, int bytes)
 	// printable content
 	for (i = 0; i < bytes; ++i)
 	{
-		line[pos++] = _istprint(membuf[i]) ? 
-			membuf[i] : _T('.');
+		if (bytes != 16) 
+		{
+			line[pos++] = '-';
+		}
+		else 
+		{
+			/* FIXME:	issue #1
+			该段代码在上一个版本的树莓派系统(Jessie)上可以正常运行，
+			但是升级到Stretch后就会导致段错误(segmentation fault)，
+			问题初步定位为输出'%'导致程序异常（通过生成的日志可以分析）。
+			临时修复：可以通过屏蔽该段代码而使用下面的代码修复——
+			即每次需要输出'%'时，都用'.'代替。
+			*/
+			//line[pos++] = _istprint(membuf[i]) ? membuf[i] : _T('.');
+			
+			TCHAR temp = '.';
+			if (_istprint(membuf[i])) {
+				if (membuf[i] == '%')
+					temp = _T('.');
+				else
+					temp = membuf[i];
+			}
+			else
+				temp = _T('.');
+		
+			line[pos++] = temp;
+		}
+		
 	}
 
 	pos += _stprintf(line + pos, _T("|\n"));
 
-	tstring temp;
-	temp.assign(line, pos);
-
 	if (file != nullptr)
 		writedump(file, line, pos);
-	else
+	else {
+		tstring temp;
+		temp.assign(line, pos);
 		_log_handler->put_notify(temp);
+	}
 
 	return pos;
 }
@@ -394,7 +419,7 @@ int tinylog::dumphex(const TCHAR *hexfile, const void *data, int bytes)
 	if (hexfile != nullptr)
 	{
 		file = _tfopen(hexfile, _T("a"));
-		writedump(file, title, sizeof(title) - 1); // ignore NUL
+		writedump(file, title, (sizeof(title)/sizeof(TCHAR)) - 1); // ignore NUL
 	}
 	else
 	{
@@ -435,7 +460,7 @@ tstring tinylog::makehexfilename(const TCHAR *hexfile)
 	TCHAR finalname[128];
 	memset(finalname, 0x00, sizeof finalname);
 
-	_sntprintf(finalname, sizeof(finalname), _T("%s/%s_%s_%s.hex"),
+	_sntprintf(finalname, sizeof(finalname)/sizeof(TCHAR), _T("%s/%s_%s_%s.hex"),
 		_path.c_str(),
 		hexfile, 
 		getdatetime(_T(""), _T(""), _T("")).c_str(), 

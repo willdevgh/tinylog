@@ -38,7 +38,7 @@ const int MAXLINESIZE = 1024;
 class loghandler;
 using tstring = std::basic_string<TCHAR>;
 using tstringstream = std::basic_stringstream<TCHAR>;
-using byte = unsigned char;
+using byte = unsigned TCHAR;
 
 const int TL_FILENAME_MAX = 256;
 const int TL_FILEEXT_MAX = 3;
